@@ -8,7 +8,8 @@ import java.util.Scanner;
 
 public class Server{
     
-    final static int PORT = 2222;
+    static boolean running = true;
+    final static int PORT = 2223;
     public static void main(String[] args) {
             final ServerSocket serverSocket;
         try {
@@ -22,16 +23,19 @@ public class Server{
              * Only Works On LocalHost(127.0.0.1)*/
             System.out.println("(+) Connected......" + request.getInetAddress());
 
-            /**Input And Output Streams To Transfer Data Between Client And Server
+            /**Input And Output Streams To Transfer Data Between Server And Server
              * dout - DataOutputStream
              * din - DataInputStream*/
             final DataOutputStream dout = new DataOutputStream(request.getOutputStream());
             final DataInputStream din = new DataInputStream(request.getInputStream());
     
             /**Starting Thread For Smooth Chatting */
-            new SendS(dout).start();
-            new ReceiveS(din).start();
+            new Send(dout).start();
+            new Receive(din).start();
             
+            // Thread.currentThread().join();
+            // serverSocket.close();
+            // request.close();
         } catch (Exception e) {
                 e.printStackTrace();
         }
@@ -39,21 +43,28 @@ public class Server{
         return;
     }   
     }
-    
-/**Thread For Sending Data to Client */
-class SendS extends Thread {
+/**Thread For Sending Data to Server */
+class Send extends Thread {
     DataOutputStream d;
     final Scanner scanner =  new Scanner(System.in);
 
-    public SendS(DataOutputStream d) {
+    public Send(DataOutputStream d) {
         this.d = d;
     }
 
     public void run() {
         try {
-            while (true) {
-                final String s = scanner.nextLine();
+            while (Server.running) {
+                String s = null;
+                while(Server.running) {
+                    if (scanner.hasNext()) {
+                        s = scanner.nextLine();
+                    }
+                    if (s != null) break;
+                }
                 d.writeUTF(s);
+                if (s.contains("logout")) Server.running = false;
+
             }
         } catch (final Exception e) {
             e.printStackTrace();
@@ -65,20 +76,22 @@ class SendS extends Thread {
 }
 
 
-/**Thread For Receiving Data From Client */
-class ReceiveS extends Thread {
+/**Thread For Receiving Data From Server */
+class Receive extends Thread {
     DataInputStream d;
 
-    public ReceiveS(DataInputStream d) {
+    public Receive(DataInputStream d) {
         this.d = d;
+
     }
 
     public void run() {
         try {
             String s = d.readUTF().toString();
-            while (!(s == "logout" || s == "logout")) { 
-                System.out.println("From Client: " + s);
+            while (Server.running) {
+                System.out.println("From Server: " + s);
                 s = d.readUTF().toString();
+                if (s.contains("logout")) Server.running = false;
             }
         } catch (final Exception e) {
                 e.printStackTrace();

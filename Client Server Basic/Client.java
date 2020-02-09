@@ -3,11 +3,12 @@ import java.net.*;
 import java.util.Scanner;
 
 public class Client {  
+    static boolean running = true;
 public static void main(final String[] args) {
             final Socket s;
         try {
             /**Creating Socket To Establish Connection With Local Server */
-            s= new Socket("127.0.0.1", 2222);
+            s= new Socket("127.0.0.1", 2223);
 
             /**Data Input And Data Output Streams For Transfering Data From Client To Server and vice-versa */
             final DataInputStream dis = new DataInputStream(s.getInputStream());
@@ -23,7 +24,6 @@ public static void main(final String[] args) {
     }
 }
 
-
 /**Thread For Sending Data to Client */
 class Send extends Thread {
     DataOutputStream d;
@@ -35,16 +35,24 @@ class Send extends Thread {
 
     public void run() {
         try {
-            while (true) {
-                final String s = scanner.nextLine();
+            while (Client.running) {
+                String s = null;
+                while(Client.running) {
+                    if (scanner.hasNext()) {
+                        s = scanner.nextLine();
+                    }
+                    if (s != null) break;
+                }
                 d.writeUTF(s);
+                if (s.contains("logout")) Client.running = false;
+
             }
         } catch (final Exception e) {
             e.printStackTrace();
-            }
-            finally{
-                scanner.close();
-            }
+        }
+        finally{
+            scanner.close();
+        }
     }
 }
 
@@ -55,17 +63,19 @@ class Receive extends Thread {
 
     public Receive(DataInputStream d) {
         this.d = d;
+
     }
 
     public void run() {
         try {
             String s = d.readUTF().toString();
-            while (!(s == "Logout" || s == "logout")) {
-                System.out.println("From Server: " + s);
+            while (Client.running) {
+                System.out.println("From Client: " + s);
                 s = d.readUTF().toString();
+                if (s.contains("logout")) Client.running = false;
             }
         } catch (final Exception e) {
-            e.printStackTrace();
+                e.printStackTrace();
         }
     }
 }
